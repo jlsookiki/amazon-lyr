@@ -28,6 +28,27 @@
 
 ---
 
+## This fork: research-only
+
+`jlsookiki/amazon-lyr` ships with `RESEARCH_ONLY = True` in `amazon_lyr/constants.py`.
+In this mode the server is a signed-out product-research tool:
+
+- Only `search_products`, `get_product`, `compare_products`, `get_reviews`,
+  `review_insights` and `search_in_reviews` are registered.
+- Stored cookies are never loaded or sent. No Amazon account is involved, so
+  `amazon-lyr login` is not needed. Prices are what a signed-out visitor sees.
+- The HTTP transport takes a bearer token: set `AMAZON_LYR_AUTH_TOKEN` (32+
+  characters) and clients must send `Authorization: Bearer <token>`. Binding to
+  a non-loopback host is refused unless the token is set.
+
+```bash
+AMAZON_LYR_AUTH_TOKEN="$(openssl rand -hex 32)" \
+  amazon-lyr serve --transport streamable-http --port 8000
+```
+
+Everything below describes the full cookie-auth build, which this fork keeps in
+the tree but does not register.
+
 ## An agent session, start to finish
 
 This is one real conversation with an agent running `amazon-lyr` — no steps hidden:

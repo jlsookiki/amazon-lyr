@@ -9,21 +9,27 @@ from dotenv import load_dotenv
 def _serve(args) -> None:  # noqa: ANN001 - argparse Namespace
     from amazon_lyr.server import create_mcp_server
 
-    mcp = create_mcp_server()
     transport = args.transport or os.getenv("TRANSPORT", "stdio")
     if transport == "streamable-http":
+        # Bearer token for the HTTP transport. An env var because it is a secret;
+        # there is deliberately no CLI flag (it would show up in `ps`).
+        token = os.getenv("AMAZON_LYR_AUTH_TOKEN", "").strip() or None
         host = args.host or os.getenv("HOST", "127.0.0.1")
-        if host not in {"127.0.0.1", "localhost", "::1"}:
-            # The HTTP transport has no authentication; anyone who can reach it
-            # can drive your Amazon session.
+        if host not in {"127.0.0.1", "localhost", "::1"} and not token:
+            # Without a token anyone who can reach the port can use the server.
             raise SystemExit(
-                f"Refusing to serve unauthenticated MCP on non-loopback host {host!r}."
+                f"Refusing to serve unauthenticated MCP on non-loopback host {host!r}. "
+                "Set AMAZON_LYR_AUTH_TOKEN to require a bearer token."
             )
+        try:
+            mcp = create_mcp_server(auth_token=token)
+        except ValueError as e:
+            raise SystemExit(f"AMAZON_LYR_AUTH_TOKEN: {e}") from e
         port = int(args.port or os.getenv("PORT", "8000"))
         path = args.http_path or os.getenv("HTTP_PATH", "/mcp")
         mcp.run(transport="http", host=host, port=port, path=path)
     else:
-        mcp.run()
+        create_mcp_server().run()
 
 
 def main(argv: list[str] | None = None) -> None:

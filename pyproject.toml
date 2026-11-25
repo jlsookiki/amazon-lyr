@@ -41,3 +41,4 @@ ignore = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = ["research_only: run against the shipped RESEARCH_ONLY constant"]

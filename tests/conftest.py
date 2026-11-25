@@ -26,6 +26,18 @@ def money_ops_enabled(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _full_shopping_mode(request, monkeypatch):
+    """The upstream suite exercises the full cookie-auth tool surface, so it runs
+    with RESEARCH_ONLY off. Tests marked ``research_only`` run against the
+    shipped constant instead."""
+    if "research_only" in request.keywords:
+        return
+    from amazon_lyr import constants
+
+    monkeypatch.setattr(constants, "RESEARCH_ONLY", False)
+
+
+@pytest.fixture(autouse=True)
 def _reset_client_singleton():
     """Keep the process-wide client singleton from leaking between tests."""
     from amazon_lyr import dependencies

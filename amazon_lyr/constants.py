@@ -19,6 +19,16 @@ ORDERING_ENABLED: Final[bool] = False  # checkout_preview + place_order
 ORDER_CANCEL_ENABLED: Final[bool] = False  # cancel_order
 RETURNS_ENABLED: Final[bool] = False  # initiate_return
 
+# Research-only build (jlsookiki fork). While True the server is a signed-out
+# product-research tool: only search/product/review tools are registered, and
+# stored cookies are never loaded or sent, so no Amazon account is involved.
+# A code constant on purpose, like the kill switches above: not an env var,
+# config value or tool parameter.
+RESEARCH_ONLY: Final[bool] = True
+
+# Minimum length of the bearer token that protects the HTTP transport.
+MIN_AUTH_TOKEN_LENGTH: Final[int] = 32
+
 SEARCH_PATH = "/s"
 PRODUCT_PATH = "/dp"
 REVIEWS_PATH = "/product-reviews"

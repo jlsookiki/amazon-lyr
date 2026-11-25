@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from amazon_lyr import constants
 from amazon_lyr.exceptions import AuthenticationError
 from amazon_lyr.marketplace import resolve_marketplace
 from amazon_lyr.scraping.api_client import AmazonClient
@@ -13,6 +14,10 @@ _client: AmazonClient | None = None
 def get_amazon_client() -> AmazonClient:
     global _client
     if _client is None:
+        if constants.RESEARCH_ONLY:
+            # Signed-out by design: never read or send stored cookies.
+            _client = AmazonClient(cookies=None, marketplace=resolve_marketplace(None).base_url)
+            return _client
         cookies = load_cookies()
         marketplace = resolve_marketplace(cookies)
         if marketplace.login_cookie not in cookies:
