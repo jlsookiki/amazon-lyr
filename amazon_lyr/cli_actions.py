@@ -6,7 +6,7 @@ import json
 import re
 import sys
 
-from amazon_lyr import __version__
+from amazon_lyr import __version__, constants
 from amazon_lyr.authentication import get_auth_status
 from amazon_lyr.cookie_import import cookies_from_json, import_from_browser
 from amazon_lyr.exceptions import AmazonError
@@ -96,6 +96,10 @@ def _compact(data: dict, max_items: int = 8) -> dict:
 
 # ── commands ──────────────────────────────────────────────────────────────
 
+# Commands this research-only build runs. Everything else (login, cart, orders)
+# needs an Amazon session, so it's refused before any cookie is read or saved.
+_RESEARCH_COMMANDS = {"search", "product", "reviews", "status", "logout"}
+
 
 def _home_view() -> None:
     status = get_auth_status()
@@ -118,6 +122,17 @@ async def run_command(args) -> None:  # noqa: ANN001, C901 - flat dispatch is fi
         return
 
     cmd = args.command
+
+    if constants.RESEARCH_ONLY:
+        if cmd is None or cmd == "status":
+            status = {"mode": "research_only", "signed_out": True}
+            print(json.dumps(status) if getattr(args, "json", False) else toon_object(status))
+            return
+        if cmd not in _RESEARCH_COMMANDS:
+            axi_error(
+                f"`{cmd}` is off in this research-only build (signed out, no Amazon account).",
+                hint="Available: search, product, reviews, logout.",
+            )
 
     if cmd is None:
         _home_view()

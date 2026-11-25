@@ -5,6 +5,7 @@ These tests run against the shipped ``RESEARCH_ONLY`` constant (see the
 """
 
 import asyncio
+import io
 import json
 
 import pytest
@@ -146,3 +147,40 @@ def test_http_rejects_wrong_token():
 
 def test_http_accepts_right_token():
     assert _post({"Authorization": f"Bearer {TOKEN}"}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["login", "--cookies-file", "-"],
+        ["login", "--interactive", "--send-to", "pi"],
+        ["cart"],
+        ["cart-add", "B000000001"],
+        ["orders"],
+        ["returns"],
+    ],
+)
+def test_cli_refuses_account_commands(isolated_config, monkeypatch, capsys, argv):
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"at-main": "secret"}'))
+    with pytest.raises(SystemExit) as e:
+        cli_main.main(argv)
+    assert e.value.code == 2
+    assert "research-only" in capsys.readouterr().out
+    assert not (isolated_config / "xdg-config" / "amazon-lyr").exists()
+
+
+def test_cli_status_reports_research_only(isolated_config, monkeypatch, capsys):
+    monkeypatch.setenv("AMAZON_COOKIES", json.dumps({"at-main": "secret", "session-id": "1"}))
+    cli_main.main(["status", "--json"])
+    assert json.loads(capsys.readouterr().out) == {"mode": "research_only", "signed_out": True}
+
+
+def test_cli_search_sends_no_cookies(isolated_config, monkeypatch, capsys):
+    monkeypatch.setenv("AMAZON_COOKIES", json.dumps({"at-main": "secret", "session-id": "1"}))
+    client = dependencies.get_amazon_client()
+    fake = FakeSession([FakeResponse(SEARCH_HTML)])
+    attach_session(client, fake)
+    cli_main.main(["search", "usb hub", "--json"])
+    assert json.loads(capsys.readouterr().out)["results"][0]["asin"] == "B000000001"
+    assert client._cookies == {}
+    assert fake.calls and all("cookies" not in call for call in fake.calls)

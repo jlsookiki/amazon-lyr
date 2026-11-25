@@ -37,6 +37,8 @@ In this mode the server is a signed-out product-research tool:
   `review_insights` and `search_in_reviews` are registered.
 - Stored cookies are never loaded or sent. No Amazon account is involved, so
   `amazon-lyr login` is not needed. Prices are what a signed-out visitor sees.
+- The CLI runs `search`, `product`, `reviews`, `status` and `logout` only;
+  `login` and the cart/order commands are refused.
 - The HTTP transport takes a bearer token: set `AMAZON_LYR_AUTH_TOKEN` (32+
   characters) and clients must send `Authorization: Bearer <token>`. Binding to
   a non-loopback host is refused unless the token is set.

@@ -80,8 +80,8 @@ Key invariants:
   Redirects are followed by hand — never pass `allow_redirects=True`.
 - `tests/test_kill_switch.py` runs against the shipped constants; keep it green.
 - This fork ships `RESEARCH_ONLY = True` (code constant, same rule as the kill
-  switches): only search/product/review tools are registered and cookies are
-  never loaded. `tests/test_research_only.py` runs against the shipped value;
+  switches): only search/product/review tools are registered, cookies are
+  never loaded, and the CLI refuses login/cart/order commands. `tests/test_research_only.py` runs against the shipped value;
   the rest of the suite runs with it patched off via the autouse fixture in conftest.
 - Never hard-code amazon.com URLs or `at-main`: use the client's `_base` /
   `resolve_marketplace()`. New storefronts go in `MARKETPLACES` only.
