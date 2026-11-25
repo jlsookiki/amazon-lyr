@@ -144,3 +144,26 @@ def test_header_selects_the_session_over_http(isolated_config, monkeypatch):
             }
             assert _rpc(http, call, sid, user).status_code == 200
     assert sent == ["bob-token", "alice-token"]
+
+
+@pytest.mark.parametrize("value", ["true", "yes", "1 ", "on", "2"])
+def test_unrecognised_per_user_value_refuses_to_start(monkeypatch, value):
+    monkeypatch.setenv("AMAZON_LYR_PER_USER", value)
+    monkeypatch.setenv("AMAZON_LYR_AUTH_TOKEN", TOKEN)
+    monkeypatch.setattr("amazon_lyr.server.create_mcp_server", lambda **_: None)
+    with pytest.raises(SystemExit, match="AMAZON_LYR_PER_USER"):
+        cli_main.main(["serve", "--transport", "streamable-http"])
+
+
+@pytest.mark.parametrize(("value", "on"), [("", False), ("0", False), ("1", True)])
+def test_per_user_values(isolated_config, monkeypatch, value, on):
+    monkeypatch.setenv("AMAZON_LYR_PER_USER", value)
+    monkeypatch.setenv("AMAZON_LYR_AUTH_TOKEN", TOKEN)
+
+    class FakeMCP:
+        def run(self, **_):
+            pass
+
+    monkeypatch.setattr("amazon_lyr.server.create_mcp_server", lambda **_: FakeMCP())
+    cli_main.main(["serve", "--transport", "streamable-http"])
+    assert dependencies._per_user is on

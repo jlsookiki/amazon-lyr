@@ -6,6 +6,17 @@ import os
 from dotenv import load_dotenv
 
 
+def _per_user_enabled() -> bool:
+    """AMAZON_LYR_PER_USER: unset, empty or 0 is off, 1 is on. Anything else stops
+    startup, because silently staying off would serve everyone the owner's session."""
+    value = os.getenv("AMAZON_LYR_PER_USER", "")
+    if value in {"", "0"}:
+        return False
+    if value == "1":
+        return True
+    raise SystemExit(f"AMAZON_LYR_PER_USER must be 0 or 1, not {value!r}.")
+
+
 def _serve(args) -> None:  # noqa: ANN001 - argparse Namespace
     from amazon_lyr.server import create_mcp_server
 
@@ -21,7 +32,7 @@ def _serve(args) -> None:  # noqa: ANN001 - argparse Namespace
                 f"Refusing to serve unauthenticated MCP on non-loopback host {host!r}. "
                 "Set AMAZON_LYR_AUTH_TOKEN to require a bearer token."
             )
-        if os.getenv("AMAZON_LYR_PER_USER") == "1":
+        if _per_user_enabled():
             # The user header is only trustworthy when a token-holding gate sets it.
             if not token:
                 raise SystemExit("AMAZON_LYR_PER_USER needs AMAZON_LYR_AUTH_TOKEN.")
