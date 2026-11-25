@@ -4,6 +4,7 @@ user's own stored session is used (see dependencies.enable_per_user_sessions).""
 import asyncio
 import json
 import os
+import re
 import time
 
 import pytest
@@ -11,7 +12,8 @@ from conftest import FakeResponse, FakeSession
 from starlette.testclient import TestClient
 
 from amazon_lyr import cli_main, constants, dependencies
-from amazon_lyr.exceptions import AuthenticationError
+from amazon_lyr.error_handler import handle_api_error
+from amazon_lyr.exceptions import AuthenticationError, SessionExpiredError
 from amazon_lyr.ratelimit import RateLimiter
 from amazon_lyr.scraping.api_client import AmazonClient
 from amazon_lyr.server import create_mcp_server
@@ -199,3 +201,37 @@ async def test_shutdown_closes_every_user_client(per_user):
     await dependencies.close_clients()
     assert all(s.closed for s in sessions)
     assert dependencies._user_clients == {}
+
+
+def test_status_reports_the_requesting_users_session(per_user, monkeypatch):
+    monkeypatch.setenv("AMAZON_COOKIES", json.dumps({"at-main": "owner", "session-id": "1"}))
+    _store("alice", "alice-token")
+    per_user[dependencies.USER_HEADER] = "alice"
+    assert dependencies.session_cookies()["at-main"] == "alice-token"
+    per_user[dependencies.USER_HEADER] = "bob"
+    assert dependencies.session_cookies() == {}
+    per_user[dependencies.USER_HEADER] = ""
+    with pytest.raises(AuthenticationError):
+        dependencies.session_cookies()
+
+
+def test_session_without_login_cookie_is_refused(per_user):
+    path = get_user_cookies_path("alice")
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"session-id": "1"}))
+    per_user[dependencies.USER_HEADER] = "alice"
+    with pytest.raises(AuthenticationError, match="incomplete"):
+        dependencies.get_amazon_client()
+
+
+@pytest.mark.parametrize(
+    ("url", "hint"),
+    [
+        ("https://example.test/account", "reconnect Amazon at https://example.test/account"),
+        ("", "amazon-lyr --login"),
+    ],
+)
+def test_expired_session_hint(monkeypatch, url, hint):
+    monkeypatch.setenv("AMAZON_LYR_SIGNIN_URL", url)
+    with pytest.raises(RuntimeError, match=re.escape(hint)):
+        handle_api_error(SessionExpiredError("Amazon redirected to sign-in"))
