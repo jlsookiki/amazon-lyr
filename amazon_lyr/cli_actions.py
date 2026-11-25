@@ -96,9 +96,10 @@ def _compact(data: dict, max_items: int = 8) -> dict:
 
 # ── commands ──────────────────────────────────────────────────────────────
 
-# Commands this research-only build runs. Everything else (login, cart, orders)
-# needs an Amazon session, so it's refused before any cookie is read or saved.
+# Commands this research-only build runs; cart and order commands are refused
+# before any request. Signed out, login is refused too, so no cookie is saved.
 _RESEARCH_COMMANDS = {"search", "product", "reviews", "status", "logout"}
+_SIGNED_IN_COMMANDS = {"login"}
 
 
 def _home_view() -> None:
@@ -124,14 +125,17 @@ async def run_command(args) -> None:  # noqa: ANN001, C901 - flat dispatch is fi
     cmd = args.command
 
     if constants.RESEARCH_ONLY:
-        if cmd is None or cmd == "status":
+        allowed = _RESEARCH_COMMANDS | (
+            _SIGNED_IN_COMMANDS if constants.RESEARCH_SIGNED_IN else set()
+        )
+        if not constants.RESEARCH_SIGNED_IN and cmd in {None, "status"}:
             status = {"mode": "research_only", "signed_out": True}
             print(json.dumps(status) if getattr(args, "json", False) else toon_object(status))
             return
-        if cmd not in _RESEARCH_COMMANDS:
+        if cmd is not None and cmd not in allowed:
             axi_error(
-                f"`{cmd}` is off in this research-only build (signed out, no Amazon account).",
-                hint="Available: search, product, reviews, logout.",
+                f"`{cmd}` is off in this research-only build.",
+                hint="Available: " + ", ".join(sorted(allowed)) + ".",
             )
 
     if cmd is None:

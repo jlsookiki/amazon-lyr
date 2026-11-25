@@ -14,7 +14,7 @@ _client: AmazonClient | None = None
 def get_amazon_client() -> AmazonClient:
     global _client
     if _client is None:
-        if constants.RESEARCH_ONLY:
+        if constants.RESEARCH_ONLY and not constants.RESEARCH_SIGNED_IN:
             # Signed-out by design: never read or send stored cookies.
             _client = AmazonClient(cookies=None, marketplace=resolve_marketplace(None).base_url)
             return _client

@@ -30,15 +30,23 @@
 
 ## This fork: research-only
 
-`jlsookiki/amazon-lyr` ships with `RESEARCH_ONLY = True` in `amazon_lyr/constants.py`.
-In this mode the server is a signed-out product-research tool:
+`jlsookiki/amazon-lyr` ships with `RESEARCH_ONLY = True` and
+`RESEARCH_SIGNED_IN = True` in `amazon_lyr/constants.py`. In this mode the
+server is a read-only product-research tool that uses your Amazon session:
 
 - Only `search_products`, `get_product`, `compare_products`, `get_reviews`,
-  `review_insights` and `search_in_reviews` are registered.
-- Stored cookies are never loaded or sent. No Amazon account is involved, so
-  `amazon-lyr login` is not needed. Prices are what a signed-out visitor sees.
-- The CLI runs `search`, `product`, `reviews`, `status` and `logout` only;
-  `login` and the cart/order commands are refused.
+  `review_insights`, `search_in_reviews` and `get_session_status` are
+  registered. Cart, lists, orders and account tools are not.
+- Results, prices and delivery estimates are your account's own, and reviews
+  load (Amazon only shows them signed in).
+- Every request must be a GET of a search, product or review page. Anything
+  else, including a redirect to an account page, is refused before it is sent.
+- The CLI runs `search`, `product`, `reviews`, `status`, `login` and `logout`;
+  cart and order commands are refused. Sign in with
+  `amazon-lyr login --interactive` (add `--send-to HOST` to put the session on
+  another machine).
+- With `RESEARCH_SIGNED_IN = False` it reads signed out instead: cookies are
+  never loaded and `login` is refused.
 - The HTTP transport takes a bearer token: set `AMAZON_LYR_AUTH_TOKEN` (32+
   characters) and clients must send `Authorization: Bearer <token>`. Binding to
   a non-loopback host is refused unless the token is set.

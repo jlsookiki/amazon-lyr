@@ -79,9 +79,13 @@ Key invariants:
   (https + Amazon domain; checkout paths/fields refused while ordering is off).
   Redirects are followed by hand — never pass `allow_redirects=True`.
 - `tests/test_kill_switch.py` runs against the shipped constants; keep it green.
-- This fork ships `RESEARCH_ONLY = True` (code constant, same rule as the kill
-  switches): only search/product/review tools are registered, cookies are
-  never loaded, and the CLI refuses login/cart/order commands. `tests/test_research_only.py` runs against the shipped value;
+- This fork ships `RESEARCH_ONLY = True` and `RESEARCH_SIGNED_IN = True` (code
+  constants, same rule as the kill switches): only search/product/review tools
+  plus `get_session_status` are registered, `_guard_request` allows only GETs of
+  search/product/review pages (`_RESEARCH_PATH_RE`), and the CLI refuses
+  cart/order commands. The stored session is sent so prices are the account's
+  own; with `RESEARCH_SIGNED_IN = False` cookies are never loaded and `login`
+  is refused. `tests/test_research_only.py` runs against the shipped value;
   the rest of the suite runs with it patched off via the autouse fixture in conftest.
 - Never hard-code amazon.com URLs or `at-main`: use the client's `_base` /
   `resolve_marketplace()`. New storefronts go in `MARKETPLACES` only.

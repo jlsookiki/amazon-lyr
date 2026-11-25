@@ -99,6 +99,12 @@ _CHECKOUT_RE = re.compile(
     r"handle-buy-box|turbo|one[-_.\s]?click|1[-_.\s]?click",
     re.IGNORECASE,
 )
+# Pages a RESEARCH_ONLY client may GET: search, product and review pages
+# (with or without Amazon's title slug), plus the sign-in and captcha pages
+# Amazon redirects to so those still surface as typed errors.
+_RESEARCH_PATH_RE = re.compile(
+    r"^/(?:s(?:/|$)|(?:[^/]+/)?(?:dp|product-reviews)/|gp/product/|ap/signin|errors/validateCaptcha)"
+)
 # Cart mutation field names come from parse_cart(); anything else is refused so
 # remove_from_cart/update_cart_quantity can't be abused as arbitrary-POST tools.
 _CART_DELETE_KEY_RE = re.compile(r"submit\.delete(?:-active|-saved)?\.[A-Za-z0-9._:-]{1,128}")
@@ -184,7 +190,8 @@ class AmazonClient:
         """Last line of defence, independent of which tool/method built the request.
 
         1. Only https URLs on the configured Amazon marketplace's domain.
-        2. While ORDERING_ENABLED is False, refuse anything that looks like
+        2. While RESEARCH_ONLY is True, only GETs of search/product/review pages.
+        3. While ORDERING_ENABLED is False, refuse anything that looks like
            checkout, order placement, buy-now or 1-click — by URL path for every
            method, and by form field name for POSTs.
         """
@@ -193,6 +200,13 @@ class AmazonClient:
         host = (parts.hostname or "").lower()
         if parts.scheme != "https" or not (host == base_domain or host.endswith("." + base_domain)):
             raise AmazonError(f"Refusing request to non-Amazon or non-https URL: {url!r}")
+        if constants.RESEARCH_ONLY and (
+            method.upper() != "GET" or not _RESEARCH_PATH_RE.match(parts.path)
+        ):
+            raise AmazonError(
+                f"Blocked {method} {parts.path}: this research-only build reads search, "
+                "product and review pages only."
+            )
         if not constants.ORDERING_ENABLED:
             if _CHECKOUT_RE.search(parts.path):
                 raise OrderingDisabledError(
