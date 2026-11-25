@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import NoReturn
 
 from amazon_lyr.exceptions import AmazonError, CaptchaError, SessionExpiredError
@@ -19,6 +20,9 @@ _HINTS: dict[type[Exception], str] = {
 def handle_api_error(e: Exception) -> NoReturn:
     """Log the failure and re-raise with a hint attached for the calling agent."""
     hint = _HINTS.get(type(e))
+    signin_url = os.getenv("AMAZON_LYR_SIGNIN_URL", "").strip()
+    if isinstance(e, SessionExpiredError) and signin_url:
+        hint = f"Ask the user to reconnect Amazon at {signin_url}"
     if isinstance(e, AmazonError):
         msg = f"{e}" + (f" Hint: {hint}" if hint else "")
         logger.warning("Tool failed: %s", msg)

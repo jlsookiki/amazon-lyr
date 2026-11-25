@@ -21,6 +21,13 @@ def _serve(args) -> None:  # noqa: ANN001 - argparse Namespace
                 f"Refusing to serve unauthenticated MCP on non-loopback host {host!r}. "
                 "Set AMAZON_LYR_AUTH_TOKEN to require a bearer token."
             )
+        if os.getenv("AMAZON_LYR_PER_USER") == "1":
+            # The user header is only trustworthy when a token-holding gate sets it.
+            if not token:
+                raise SystemExit("AMAZON_LYR_PER_USER needs AMAZON_LYR_AUTH_TOKEN.")
+            from amazon_lyr.dependencies import enable_per_user_sessions  # noqa: PLC0415
+
+            enable_per_user_sessions()
         try:
             mcp = create_mcp_server(auth_token=token)
         except ValueError as e:

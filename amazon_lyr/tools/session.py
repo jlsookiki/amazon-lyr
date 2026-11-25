@@ -9,6 +9,8 @@ def register_session_tools(mcp: FastMCP) -> None:
     async def get_session_status() -> dict:
         """Check cookie/auth state: none, degraded (login only), reads_only, or full."""
         try:
-            return get_auth_status()
+            from amazon_lyr.dependencies import session_cookies  # noqa: PLC0415
+
+            return get_auth_status(session_cookies())
         except Exception as e:
             handle_api_error(e)

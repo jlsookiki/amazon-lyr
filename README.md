@@ -45,6 +45,13 @@ server is a read-only product-research tool that uses your Amazon session:
   cart and order commands are refused. Sign in with
   `amazon-lyr login --interactive` (add `--send-to HOST` to put the session on
   another machine).
+- Several people can share one server, each with their own Amazon session:
+  run the HTTP transport with `AMAZON_LYR_AUTH_TOKEN` and `AMAZON_LYR_PER_USER=1`
+  behind a gate that authenticates people and sets `x-amazon-lyr-user: <id>`.
+  Sessions live in `~/.config/amazon-lyr/users/<id>/cookies.json`, requests
+  without the header use no session, and everyone shares one request cadence.
+  `AMAZON_LYR_SIGNIN_URL` is the page errors point people to when their
+  session is missing or expired.
 - With `RESEARCH_SIGNED_IN = False` it reads signed out instead: cookies are
   never loaded and `login` is refused.
 - The HTTP transport takes a bearer token: set `AMAZON_LYR_AUTH_TOKEN` (32+

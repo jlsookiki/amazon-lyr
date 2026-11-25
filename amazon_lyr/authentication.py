@@ -25,8 +25,8 @@ def validate_write_session() -> bool:
     return has_login and has_context
 
 
-def get_auth_status() -> dict:
-    cookies = load_cookies()
+def get_auth_status(cookies: dict[str, str] | None = None) -> dict:
+    cookies = load_cookies() if cookies is None else cookies
     if not cookies:
         return {"authenticated": False, "mode": "none", "cookies_count": 0}
     m = resolve_marketplace(cookies)

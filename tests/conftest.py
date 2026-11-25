@@ -42,9 +42,9 @@ def _reset_client_singleton():
     """Keep the process-wide client singleton from leaking between tests."""
     from amazon_lyr import dependencies
 
-    dependencies._client = None
+    dependencies.reset_client()
     yield
-    dependencies._client = None
+    dependencies.reset_client()
 
 
 # ── HTTP transport fakes ─────────────────────────────────────────────────

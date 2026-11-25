@@ -18,6 +18,19 @@ def get_cookies_path() -> Path:
     return Path(base) / "amazon-lyr" / "cookies.json"
 
 
+def get_user_cookies_path(user: str) -> Path:
+    """One person's session when the server runs with per-user sessions."""
+    return get_cookies_path().parent / "users" / user / "cookies.json"
+
+
+def read_cookies_file(path: Path) -> dict[str, str]:
+    try:
+        return {str(k): str(v) for k, v in json.loads(path.read_text()).items()}
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("Could not read cookies at %s: %s", path, e)
+        return {}
+
+
 def load_cookies() -> dict[str, str]:
     """Load cookies. Precedence: AMAZON_COOKIES env var > stored file.
 
@@ -39,13 +52,7 @@ def load_cookies() -> dict[str, str]:
             raise ValueError("AMAZON_COOKIES must be a JSON object mapping cookie names to values")
         return {str(k): str(v) for k, v in data.items()}
     path = get_cookies_path()
-    if not path.exists():
-        return {}
-    try:
-        return {str(k): str(v) for k, v in json.loads(path.read_text()).items()}
-    except (json.JSONDecodeError, OSError) as e:
-        logger.warning("Could not read cookies at %s: %s", path, e)
-        return {}
+    return read_cookies_file(path) if path.exists() else {}
 
 
 def save_cookies(cookies: dict[str, str]) -> Path:

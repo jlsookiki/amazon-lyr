@@ -85,7 +85,11 @@ Key invariants:
   search/product/review pages (`_RESEARCH_PATH_RE`), and the CLI refuses
   cart/order commands. The stored session is sent so prices are the account's
   own; with `RESEARCH_SIGNED_IN = False` cookies are never loaded and `login`
-  is refused. `tests/test_research_only.py` runs against the shipped value;
+  is refused.
+- Per-user sessions (`AMAZON_LYR_PER_USER=1`, HTTP + `AMAZON_LYR_AUTH_TOKEN`
+  only): the `x-amazon-lyr-user` header picks
+  `~/.config/amazon-lyr/users/<user>/cookies.json`; no header, no session.
+  All users share one `RateLimiter`. `tests/test_research_only.py` runs against the shipped value;
   the rest of the suite runs with it patched off via the autouse fixture in conftest.
 - Never hard-code amazon.com URLs or `at-main`: use the client's `_base` /
   `resolve_marketplace()`. New storefronts go in `MARKETPLACES` only.
