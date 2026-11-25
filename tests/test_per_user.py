@@ -167,3 +167,35 @@ def test_per_user_values(isolated_config, monkeypatch, value, on):
     monkeypatch.setattr("amazon_lyr.server.create_mcp_server", lambda **_: FakeMCP())
     cli_main.main(["serve", "--transport", "streamable-http"])
     assert dependencies._per_user is on
+
+
+class _ClosableSession:
+    closed = False
+
+    async def close(self):
+        self.closed = True
+
+
+async def test_replaced_client_is_closed(per_user):
+    path = _store("alice", "old")
+    per_user[dependencies.USER_HEADER] = "alice"
+    old = dependencies.get_amazon_client()
+    old._session = session = _ClosableSession()
+    path.write_text(json.dumps({"at-main": "new", "session-id": "1"}))
+    os.utime(path, (time.time() + 5, time.time() + 5))
+    dependencies.get_amazon_client()
+    await asyncio.sleep(0)
+    assert session.closed
+
+
+async def test_shutdown_closes_every_user_client(per_user):
+    sessions = []
+    for user in ("alice", "bob"):
+        _store(user, user)
+        per_user[dependencies.USER_HEADER] = user
+        client = dependencies.get_amazon_client()
+        client._session = s = _ClosableSession()
+        sessions.append(s)
+    await dependencies.close_clients()
+    assert all(s.closed for s in sessions)
+    assert dependencies._user_clients == {}

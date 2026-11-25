@@ -7,6 +7,7 @@ gets a client built from that user's own stored session.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 
@@ -25,6 +26,8 @@ _client: AmazonClient | None = None
 _per_user = False
 # user -> (cookie file mtime, client); rebuilt when the user signs in again.
 _user_clients: dict[str, tuple[float, AmazonClient]] = {}
+# Closes of replaced clients still in flight (held so they aren't garbage-collected).
+_closing: set[asyncio.Task] = set()
 # Everyone shares one IP, so everyone shares one request cadence.
 _shared_limiter = RateLimiter(min_interval=REQUEST_INTERVAL)
 
@@ -66,7 +69,19 @@ def _user_client(user: str) -> AmazonClient:
     client = AmazonClient(cookies=cookies, marketplace=marketplace.base_url)
     client._rate_limiter = _shared_limiter
     _user_clients[user] = (mtime, client)
+    if cached:
+        _close_later(cached[1])
     return client
+
+
+def _close_later(client: AmazonClient) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return  # no loop (sync caller): the session was never opened in one either
+    task = loop.create_task(client.close())
+    _closing.add(task)
+    task.add_done_callback(_closing.discard)
 
 
 def session_cookies() -> dict[str, str]:
@@ -97,6 +112,16 @@ def get_amazon_client() -> AmazonClient:
             )
         _client = AmazonClient(cookies=cookies, marketplace=marketplace.base_url)
     return _client
+
+
+async def close_clients() -> None:
+    """Close every HTTP session (server shutdown)."""
+    global _client
+    clients = [c for _, c in _user_clients.values()] + ([_client] if _client else [])
+    _user_clients.clear()
+    _client = None
+    # One failing close mustn't leave the rest open.
+    await asyncio.gather(*(c.close() for c in clients), return_exceptions=True)
 
 
 def reset_client() -> None:

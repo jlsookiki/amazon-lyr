@@ -18,13 +18,10 @@ from amazon_lyr.tools.shopping import (
 
 @asynccontextmanager
 async def _lifespan(_: FastMCP):
-    """Close the shared HTTP session cleanly on server shutdown."""
+    """Close the HTTP sessions cleanly on server shutdown."""
     yield
-    client = dependencies._client
-    if client is not None:
-        await client.close()
-        dependencies._client = None
-        logger.info("amazon-lyr HTTP session closed")
+    await dependencies.close_clients()
+    logger.info("amazon-lyr HTTP sessions closed")
 
 
 def _research_instructions() -> str:
